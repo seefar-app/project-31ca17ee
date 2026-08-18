@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "architecture": {
+    "framework": "Expo (React Native)",
+    "sdkVersion": "~54.0.30",
+    "navigation": "tabs",
+    "styling": "NativeWind (Tailwind CSS)",
+    "stateManagement": "Zustand + React Query"
+  },
+  "files": {
+    "package.json": "json",
+    "app.json": "json",
+    "tsconfig.json": "json",
+    "expo-env.d.ts": "ts",
+    "global.css": "ts",
+    "tailwind.config.js": "js",
+    "nativewind-env.d.ts": "ts",
+    "types/index.ts": "ts",
+    "constants/Colors.ts": "ts",
+    "hooks/useColorScheme.ts": "ts",
+    "store/useAuthStore.ts": "ts",
+    "store/useStore.ts": "ts",
+    "components/ui/ThemedView.tsx": "tsx",
+    "components/ui/ThemedText.tsx": "tsx",
+    "components/ui/Button.tsx": "tsx",
+    "components/ui/Card.tsx": "tsx",
+    "components/ui/Input.tsx": "tsx",
+    "components/ui/Avatar.tsx": "tsx",
+    "components/ui/Badge.tsx": "tsx",
+    "components/ui/Skeleton.tsx": "tsx",
+    "components/shared/ActivityCard.tsx": "tsx",
+    "components/shared/StatCard.tsx": "tsx",
+    "components/shared/ActivityRing.tsx": "tsx",
+    "components/shared/AchievementBadge.tsx": "tsx",
+    "app/_layout.tsx": "tsx",
+    "app/index.tsx": "tsx",
+    "app/(auth)/_layout.tsx": "tsx",
+    "app/(auth)/login.tsx": "tsx",
+    "app/(auth)/signup.tsx": "tsx",
+    "app/(tabs)/_layout.tsx": "tsx",
+    "app/(tabs)/index.tsx": "tsx",
+    "app/(tabs)/activities.tsx": "tsx",
+    "app/(tabs)/profile.tsx": "tsx",
+    "app/workout/start.tsx": "tsx",
+    "app/workout/[id].tsx": "tsx"
+  },
+  "decisions": [],
+  "knownIssues": [],
+  "designTokens": {
+    "theme": "Coral Reef",
+    "style": "playful-vibrant",
+    "mood": "playful, youthful, vibrant",
+    "colors": {
+      "primary": "pink-500",
+      "secondary": "orange-100",
+      "accent": "yellow-400",
+      "background": "white"
+    },
+    "gradients": [
+      "#ec4899",
+      "#f43f5e",
+      "#fb7185"
+    ]
+  },
+  "dependencies": {},
+  "conversationLog": [
+    {
+      "summary": "Initial generation: project-31ca17ee — create an fitness app to track user activite and exercise  ",
+      "timestamp": "2026-08-18T22:58:56.970Z"
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-08-18T22:58:56.970Z",
+    "lastUpdated": "2026-08-18T22:58:56.970Z",
+    "projectName": "project-31ca17ee",
+    "platform": "react-native",
+    "originalPrompt": "create an fitness app to track user activite and exercise  ",
+    "generationSummary": "## project-31ca17ee - Production React Native App\n\n**App Type**: fitness\n**Tech Stack**: Expo SDK ~54.0.30, React Native 0.81.5\n\n### Implemented Screens\n- `app/index.tsx` - Stunning onboarding/splash screen with full-bleed fitness imagery\n- `app/(auth)/_layout.tsx` - Auth stack layout\n- `app/(auth)/login.tsx` - Beautiful login with gradient header\n- `app/(auth)/signup.tsx` - Registration with fitness goal selection\n- `app/(tabs)/_layout.tsx` - Main tab navigation with coral theme\n- `app/(tabs)/index.tsx` - Home dashboard with today's stats, activity rings, quick actions\n- `app/(tabs)/activities.tsx` - Activity history with filtering and beautiful cards\n- `app/(tabs)/profile.tsx` - User profile with achievements and settings\n- `app/workout/start.tsx` - Active workout tracking with real-time stats\n- `app/workout/[id].tsx` - Workout detail and summary view\n\n### Key Files & Responsibilities\n- `types/index.ts` - All TypeScript interfaces (User, Activity, Goal, Achievement, DailyStats)\n- `constants/Colors.ts` - Full coral reef theme color system with dark mode\n- `store/useAuthStore.ts` - Authentication state, login/signup/logout actions\n- `store/useStore.ts` - Main app state: activities, goals, achievements, stats\n- `components/ui/Button.tsx` - Multi-variant button with haptic feedback\n- `components/ui/Card.tsx` - Elevated cards with coral accents\n- `components/ui/Input.tsx` - Styled inputs with labels and error states\n- `components/ui/Avatar.tsx` - User avatar with fallback initials\n- `components/ui/Badge.tsx` - Status badges (active, completed, paused)\n- `components/ui/Skeleton.tsx` - Shimmer loading placeholders\n- `components/ui/ThemedView.tsx` - Theme-aware view container\n- `components/ui/ThemedText.tsx` - Theme-aware text component\n- `components/shared/ActivityCard.tsx` - Activity list item with stats\n- `components/shared/StatCard.tsx` - Dashboard stat display\n- `components/shared/ActivityRing.tsx` - Circular progress indicator\n- `components/shared/AchievementBadge.tsx` - Achievement display\n- `hooks/useColorScheme.ts` - Color scheme detection\n\n### Design Tokens Applied\n- Theme: Coral Reef (playful-vibrant)\n- Colors: Primary pink-500, Secondary orange-100, Accent yellow-400, Background white\n- Gradient: `['#ec4899', '#f43f5e', '#fb7185']`\n- Typography: System fonts with bold headlines (text-3xl, text-2xl), body text-base\n- Spacing/Radius: rounded-3xl for cards, rounded-lg for buttons, gap-4 spacing rhythm\n\n### Important Patterns & Conventions\n- State management: Zustand with async actions ready for Supabase\n- Navigation: Expo Router with (auth) and (tabs) groups, stack for workout screens\n- Styling: NativeWind (Tailwind CSS) throughout\n- Data fetching/mocking: Realistic mock data in stores with UUID IDs\n- Animations: Built-in Animated API (fade, scale, spring)\n- Auth Guard: Root layout checks auth state and redirects appropriately\n\n### Implemented Features\n- Email/password authentication with beautiful onboarding\n- Fitness goal selection during signup (lose weight, build muscle, stay active, improve endurance)\n- Real-time workout tracking with timer, calories, distance\n- Activity type selection (running, cycling, strength, yoga, swimming, hiking)\n- Dashboard with daily stats rings (calories, duration, activities)\n- Weekly activity chart visualization\n- Activity history with type filtering\n- Detailed workout summaries\n- Achievement badges system (First Workout, Week Warrior, Calorie Crusher, etc.)\n- Personal records tracking\n- User profile with editable settings\n- Pull-to-refresh on activity lists\n- Beautiful coral reef gradient accents throughout\n- Dark mode support\n- Haptic feedback on interactions\n\n### How to Run\n```bash\ncd project-31ca17ee\nnpm install\nnpx expo start\n```"
+  }
+}

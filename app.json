@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "FitPulse",
+    "slug": "project-31ca17ee",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "fitpulse",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#ec4899",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fitpulse.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "FitPulse uses your location to track outdoor activities like running and cycling."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ec4899"
+      },
+      "package": "com.fitpulse.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "FitPulse uses your location to track outdoor activities."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
