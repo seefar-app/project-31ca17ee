@@ -207,14 +207,15 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 20,
+    marginTop: 24,
+    marginBottom: 8,
   },
   statItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 16,
     gap: 6,
     shadowColor: '#000',
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   filterContainer: {
-    paddingVertical: 20,
+    paddingVertical: 24,
     gap: 8,
   },
   filterPill: {
@@ -248,15 +249,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
-    paddingTop: 4,
+    paddingTop: 8,
   },
   skeletonContainer: {
-    paddingTop: 20,
+    paddingTop: 24,
   },
   emptyCard: {
     alignItems: 'center',
     paddingVertical: 60,
-    marginTop: 20,
+    marginTop: 24,
   },
   emptyText: {
     fontSize: 18,

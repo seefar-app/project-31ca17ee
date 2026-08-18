@@ -292,7 +292,8 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
+    marginBottom: 8,
   },
   statCard: {
     flex: 1,
@@ -311,8 +312,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 28,
-    marginBottom: 16,
+    marginTop: 32,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
@@ -321,9 +322,10 @@ const styles = StyleSheet.create({
   achievementsContainer: {
     gap: 12,
     paddingRight: 20,
+    marginBottom: 8,
   },
   menuSection: {
-    marginTop: 28,
+    marginTop: 32,
     borderRadius: 20,
     overflow: 'hidden',
   },

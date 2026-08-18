@@ -96,7 +96,7 @@ export function ActivityCard({ activity, onPress }: ActivityCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   container: {
     flexDirection: 'row',

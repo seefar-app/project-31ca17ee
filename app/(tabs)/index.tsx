@@ -248,8 +248,8 @@ export default function HomeScreen() {
 
           {isLoadingActivities ? (
             <>
-              <Skeleton height={100} borderRadius={24} style={{ marginBottom: 12 }} />
-              <Skeleton height={100} borderRadius={24} style={{ marginBottom: 12 }} />
+              <Skeleton height={100} borderRadius={24} style={{ marginBottom: 16 }} />
+              <Skeleton height={100} borderRadius={24} style={{ marginBottom: 16 }} />
             </>
           ) : recentActivities.length > 0 ? (
             recentActivities.map((activity) => (
@@ -307,14 +307,14 @@ const styles = StyleSheet.create({
     marginTop: -8,
   },
   section: {
-    paddingTop: 16,
+    paddingTop: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 16,
+    marginTop: 32,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 20,
@@ -325,7 +325,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   quickActionCard: {
-    marginTop: 16,
+    marginTop: 4,
+    marginBottom: 8,
   },
   quickActionContent: {
     flexDirection: 'row',
@@ -345,6 +346,7 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     padding: 20,
+    marginBottom: 8,
   },
   ringsContainer: {
     flexDirection: 'row',
@@ -353,11 +355,13 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
+    marginBottom: 8,
   },
   chartCard: {
-    marginTop: 16,
+    marginTop: 24,
     padding: 20,
+    marginBottom: 8,
   },
   chartTitle: {
     fontSize: 16,
@@ -386,6 +390,7 @@ const styles = StyleSheet.create({
   emptyCard: {
     alignItems: 'center',
     paddingVertical: 40,
+    marginTop: 8,
   },
   emptyText: {
     fontSize: 16,
