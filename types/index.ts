@@ -71,3 +71,31 @@ export interface WeeklyData {
 export type ActivityType = Activity['type'];
 export type FitnessGoal = User['fitnessGoal'];
 export type ActivityStatus = Activity['status'];
+
+// Pose tracking types
+export interface PoseKeypoint {
+  name: string;
+  x: number;
+  y: number;
+  score: number;
+}
+
+export interface DetectedPose {
+  keypoints: PoseKeypoint[];
+  score: number;
+}
+
+export interface ExerciseRep {
+  exerciseType: ExerciseType;
+  count: number;
+  lastAngle: number;
+  isDown: boolean;
+}
+
+export type ExerciseType = 'squat' | 'pushup' | 'jumping_jack' | 'lunge';
+
+export interface FormFeedback {
+  isGoodForm: boolean;
+  message: string;
+  severity: 'good' | 'warning' | 'error';
+}

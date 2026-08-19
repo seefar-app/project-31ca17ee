@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -17,7 +18,7 @@ import { Card } from '@/components/ui/Card';
 import { useStore } from '@/store/useStore';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
-import type { ActivityType } from '@/types';
+import type { ActivityType, ExerciseType } from '@/types';
 
 interface WorkoutType {
   id: ActivityType;
@@ -27,6 +28,13 @@ interface WorkoutType {
   caloriesPerMin: number;
 }
 
+interface PoseExercise {
+  id: ExerciseType;
+  name: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  description: string;
+}
+
 const workoutTypes: WorkoutType[] = [
   { id: 'running', name: 'Running', icon: 'walk', color: '#ec4899', caloriesPerMin: 10 },
   { id: 'cycling', name: 'Cycling', icon: 'bicycle', color: '#f97316', caloriesPerMin: 8 },
@@ -34,6 +42,13 @@ const workoutTypes: WorkoutType[] = [
   { id: 'yoga', name: 'Yoga', icon: 'body', color: '#10b981', caloriesPerMin: 3 },
   { id: 'swimming', name: 'Swimming', icon: 'water', color: '#3b82f6', caloriesPerMin: 9 },
   { id: 'hiking', name: 'Hiking', icon: 'trail-sign', color: '#f59e0b', caloriesPerMin: 5 },
+];
+
+const poseExercises: PoseExercise[] = [
+  { id: 'squat', name: 'Squats', icon: 'body', description: 'Track your squat form and count reps' },
+  { id: 'pushup', name: 'Push-ups', icon: 'fitness', description: 'Perfect your push-up technique' },
+  { id: 'jumping_jack', name: 'Jumping Jacks', icon: 'flash', description: 'Count jumping jacks automatically' },
+  { id: 'lunge', name: 'Lunges', icon: 'walk', description: 'Track lunge depth and form' },
 ];
 
 export default function StartWorkoutScreen() {
@@ -48,6 +63,7 @@ export default function StartWorkoutScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [showPoseOptions, setShowPoseOptions] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -174,6 +190,11 @@ export default function StartWorkoutScreen() {
     }
   };
 
+  const handlePoseTracking = (exercise: ExerciseType) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push(`/pose-tracker?exercise=${exercise}`);
+  };
+
   const selectedWorkout = workoutTypes.find((t) => t.id === selectedType);
 
   return (
@@ -210,7 +231,7 @@ export default function StartWorkoutScreen() {
         )}
       </LinearGradient>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {!isActive ? (
           <>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -223,6 +244,7 @@ export default function StartWorkoutScreen() {
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setSelectedType(type.id);
+                    setShowPoseOptions(type.id === 'strength');
                   }}
                   activeOpacity={0.8}
                 >
@@ -263,6 +285,49 @@ export default function StartWorkoutScreen() {
               ))}
             </View>
 
+            {/* AI Pose Tracking Section */}
+            <View style={styles.poseSection}>
+              <View style={styles.poseSectionHeader}>
+                <View style={styles.poseTitleRow}>
+                  <Ionicons name="body" size={24} color={colors.primary} />
+                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0, marginLeft: 8 }]}>
+                    AI Pose Tracking
+                  </Text>
+                </View>
+                <View style={[styles.aiBadge, { backgroundColor: `${colors.primary}20` }]}>
+                  <Text style={[styles.aiBadgeText, { color: colors.primary }]}>NEW</Text>
+                </View>
+              </View>
+              <Text style={[styles.poseDescription, { color: colors.textSecondary }]}>
+                Use your camera to track exercise form and count reps automatically
+              </Text>
+              
+              <View style={styles.poseExercisesGrid}>
+                {poseExercises.map((exercise) => (
+                  <TouchableOpacity
+                    key={exercise.id}
+                    onPress={() => handlePoseTracking(exercise.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Card variant="elevated" style={styles.poseExerciseCard}>
+                      <View style={[styles.poseIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+                        <Ionicons name={exercise.icon} size={24} color={colors.primary} />
+                      </View>
+                      <View style={styles.poseExerciseInfo}>
+                        <Text style={[styles.poseExerciseName, { color: colors.text }]}>
+                          {exercise.name}
+                        </Text>
+                        <Text style={[styles.poseExerciseDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                          {exercise.description}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                    </Card>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             <Button
               title="Start Workout"
               onPress={handleStart}
@@ -271,7 +336,7 @@ export default function StartWorkoutScreen() {
               fullWidth
               icon="play"
               disabled={!selectedType}
-              style={{ marginTop: 32 }}
+              style={{ marginTop: 24, marginBottom: 32 }}
             />
           </>
         ) : (
@@ -321,6 +386,32 @@ export default function StartWorkoutScreen() {
               </Card>
             </View>
 
+            {/* Quick access to pose tracking during workout */}
+            {selectedType === 'strength' && (
+              <Card variant="elevated" style={styles.poseQuickAccess}>
+                <View style={styles.poseQuickAccessContent}>
+                  <View style={[styles.poseQuickIcon, { backgroundColor: `${colors.primary}15` }]}>
+                    <Ionicons name="body" size={24} color={colors.primary} />
+                  </View>
+                  <View style={styles.poseQuickInfo}>
+                    <Text style={[styles.poseQuickTitle, { color: colors.text }]}>
+                      Track with AI
+                    </Text>
+                    <Text style={[styles.poseQuickDesc, { color: colors.textSecondary }]}>
+                      Count reps & check form
+                    </Text>
+                  </View>
+                </View>
+                <Button
+                  title="Open"
+                  onPress={() => handlePoseTracking('squat')}
+                  variant="secondary"
+                  size="sm"
+                  icon="camera"
+                />
+              </Card>
+            )}
+
             <View style={styles.controlsRow}>
               {isPaused ? (
                 <Button
@@ -352,7 +443,7 @@ export default function StartWorkoutScreen() {
             </View>
           </View>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -435,13 +526,69 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  poseSection: {
+    marginTop: 32,
+  },
+  poseSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  poseTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  aiBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  poseDescription: {
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  poseExercisesGrid: {
+    gap: 12,
+  },
+  poseExerciseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  poseIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  poseExerciseInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  poseExerciseName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  poseExerciseDesc: {
+    fontSize: 12,
+  },
   activeContainer: {
     flex: 1,
-    justifyContent: 'space-between',
   },
   timerContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: 20,
+    marginBottom: 32,
   },
   timerLabel: {
     fontSize: 14,
@@ -458,6 +605,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 24,
   },
   statCard: {
     flex: 1,
@@ -472,6 +620,36 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     marginTop: 4,
+  },
+  poseQuickAccess: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  poseQuickAccessContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  poseQuickIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  poseQuickInfo: {
+    marginLeft: 12,
+  },
+  poseQuickTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  poseQuickDesc: {
+    fontSize: 12,
+    marginTop: 2,
   },
   controlsRow: {
     flexDirection: 'row',
