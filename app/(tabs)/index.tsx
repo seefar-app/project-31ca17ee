@@ -48,6 +48,7 @@ export default function HomeScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const fabScaleAnim = useRef(new Animated.Value(0)).current;
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
@@ -67,6 +68,16 @@ export default function HomeScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+
+    // Animate FAB with a slight delay
+    setTimeout(() => {
+      Animated.spring(fabScaleAnim, {
+        toValue: 1,
+        friction: 5,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+    }, 400);
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -272,6 +283,35 @@ export default function HomeScreen() {
           )}
         </Animated.View>
       </ScrollView>
+
+      {/* Floating AI Assistant Button */}
+      <Animated.View
+        style={[
+          styles.fabContainer,
+          {
+            bottom: insets.bottom + 90,
+            transform: [{ scale: fabScaleAnim }],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/assistant')}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={colors.gradient as unknown as string[]}
+            style={styles.fabGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="chatbubbles" size={26} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+        <View style={[styles.fabBadge, { backgroundColor: colors.accent }]}>
+          <Text style={styles.fabBadgeText}>AI</Text>
+        </View>
+      </Animated.View>
     </View>
   );
 }
@@ -401,5 +441,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
     textAlign: 'center',
+  },
+  fabContainer: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 100,
+  },
+  fab: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    shadowColor: '#ec4899',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  fabBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#000',
   },
 });
