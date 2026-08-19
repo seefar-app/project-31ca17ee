@@ -1,0 +1,872 @@
+{
+  "version": "1.1",
+  "generatedAt": "2026-08-19T11:30:16.658Z",
+  "schema": {
+    "sql": "CREATE TABLE IF NOT EXISTS public.users (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  email text NOT NULL UNIQUE,\n  name text,\n  avatar text,\n  age integer,\n  weight numeric,\n  height numeric,\n  \"fitnessGoal\" text,\n  \"totalCalories\" numeric DEFAULT 0,\n  \"totalDistance\" numeric DEFAULT 0,\n  \"totalWorkouts\" integer DEFAULT 0,\n  \"joinDate\" timestamptz DEFAULT now(),\n  created_at timestamptz DEFAULT now(),\n  updated_at timestamptz DEFAULT now()\n);\n\nALTER TABLE public.users ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY \"Users can view their own profile\" ON public.users\n  FOR SELECT USING (auth.uid() = id);\n\nCREATE POLICY \"Users can update their own profile\" ON public.users\n  FOR UPDATE USING (auth.uid() = id);\n\nCREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);\nCREATE INDEX IF NOT EXISTS idx_users_id ON public.users(id);\n\nCREATE TABLE IF NOT EXISTS public.activities (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  \"userId\" uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,\n  type text NOT NULL,\n  \"startTime\" timestamptz,\n  \"endTime\" timestamptz,\n  duration numeric,\n  distance numeric,\n  calories numeric,\n  pace numeric,\n  intensity text,\n  notes text,\n  timestamp timestamptz DEFAULT now(),\n  status text DEFAULT 'completed',\n  created_at timestamptz DEFAULT now(),\n  updated_at timestamptz DEFAULT now()\n);\n\nALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY \"Users can view their own activities\" ON public.activities\n  FOR SELECT USING (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can insert their own activities\" ON public.activities\n  FOR INSERT WITH CHECK (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can update their own activities\" ON public.activities\n  FOR UPDATE USING (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can delete their own activities\" ON public.activities\n  FOR DELETE USING (auth.uid() = \"userId\");\n\nCREATE INDEX IF NOT EXISTS idx_activities_userId ON public.activities(\"userId\");\nCREATE INDEX IF NOT EXISTS idx_activities_timestamp ON public.activities(timestamp);\nCREATE INDEX IF NOT EXISTS idx_activities_startTime ON public.activities(\"startTime\");\n\nCREATE TABLE IF NOT EXISTS public.goals (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  \"userId\" uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,\n  type text NOT NULL,\n  target text,\n  \"targetValue\" numeric,\n  \"startDate\" timestamptz,\n  \"endDate\" timestamptz,\n  progress numeric DEFAULT 0,\n  status text DEFAULT 'active',\n  created_at timestamptz DEFAULT now(),\n  updated_at timestamptz DEFAULT now()\n);\n\nALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY \"Users can view their own goals\" ON public.goals\n  FOR SELECT USING (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can insert their own goals\" ON public.goals\n  FOR INSERT WITH CHECK (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can update their own goals\" ON public.goals\n  FOR UPDATE USING (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can delete their own goals\" ON public.goals\n  FOR DELETE USING (auth.uid() = \"userId\");\n\nCREATE INDEX IF NOT EXISTS idx_goals_userId ON public.goals(\"userId\");\nCREATE INDEX IF NOT EXISTS idx_goals_status ON public.goals(status);\n\nCREATE TABLE IF NOT EXISTS public.achievements (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  \"userId\" uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,\n  badge text,\n  title text NOT NULL,\n  description text,\n  icon text,\n  \"unlockedDate\" timestamptz,\n  \"isUnlocked\" boolean DEFAULT false,\n  created_at timestamptz DEFAULT now(),\n  updated_at timestamptz DEFAULT now()\n);\n\nALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY \"Users can view their own achievements\" ON public.achievements\n  FOR SELECT USING (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can insert their own achievements\" ON public.achievements\n  FOR INSERT WITH CHECK (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can update their own achievements\" ON public.achievements\n  FOR UPDATE USING (auth.uid() = \"userId\");\n\nCREATE INDEX IF NOT EXISTS idx_achievements_userId ON public.achievements(\"userId\");\nCREATE INDEX IF NOT EXISTS idx_achievements_isUnlocked ON public.achievements(\"isUnlocked\");\n\nCREATE TABLE IF NOT EXISTS public.daily_stats (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  \"userId\" uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,\n  date date NOT NULL,\n  \"totalCalories\" numeric DEFAULT 0,\n  \"totalDistance\" numeric DEFAULT 0,\n  \"totalDuration\" numeric DEFAULT 0,\n  \"activityCount\" integer DEFAULT 0,\n  created_at timestamptz DEFAULT now(),\n  updated_at timestamptz DEFAULT now(),\n  UNIQUE(\"userId\", date)\n);\n\nALTER TABLE public.daily_stats ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY \"Users can view their own daily stats\" ON public.daily_stats\n  FOR SELECT USING (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can insert their own daily stats\" ON public.daily_stats\n  FOR INSERT WITH CHECK (auth.uid() = \"userId\");\n\nCREATE POLICY \"Users can update their own daily stats\" ON public.daily_stats\n  FOR UPDATE USING (auth.uid() = \"userId\");\n\nCREATE INDEX IF NOT EXISTS idx_daily_stats_userId ON public.daily_stats(\"userId\");\nCREATE INDEX IF NOT EXISTS idx_daily_stats_date ON public.daily_stats(date);\nCREATE INDEX IF NOT EXISTS idx_daily_stats_userId_date ON public.daily_stats(\"userId\", date);\n\nCREATE OR REPLACE FUNCTION public.handle_new_user()\nRETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$\nBEGIN\n  INSERT INTO public.users (id, email, name, avatar, age, weight, height, \"fitnessGoal\", \"totalCalories\", \"totalDistance\", \"totalWorkouts\", \"joinDate\", created_at, updated_at)\n  VALUES (\n    NEW.id,\n    NEW.email,\n    NEW.raw_user_meta_data ->> 'name',\n    NEW.raw_user_meta_data ->> 'avatar',\n    COALESCE((NEW.raw_user_meta_data ->> 'age')::integer, NULL),\n    COALESCE((NEW.raw_user_meta_data ->> 'weight')::numeric, NULL),\n    COALESCE((NEW.raw_user_meta_data ->> 'height')::numeric, NULL),\n    NEW.raw_user_meta_data ->> 'fitnessGoal',\n    COALESCE((NEW.raw_user_meta_data ->> 'totalCalories')::numeric, 0),\n    COALESCE((NEW.raw_user_meta_data ->> 'totalDistance')::numeric, 0),\n    COALESCE((NEW.raw_user_meta_data ->> 'totalWorkouts')::integer, 0),\n    now(),\n    now(),\n    now()\n  )\n  ON CONFLICT (id) DO NOTHING;\n  RETURN NEW;\nEND; $$;\n\nDROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;\nCREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();\n\n-- === Deterministic CRUD policies for user-owned tables (generated by SupabaseConfigAgent) ===\n-- Every table with a direct or transitive ownership path to auth.users gets INSERT/UPDATE/DELETE\n-- policies so client-side writes by the owner succeed while cross-user writes are blocked.\n-- Idempotent: safe to re-run.\nDROP POLICY IF EXISTS \"Users can insert own activities\" ON public.\"activities\";\nCREATE POLICY \"Users can insert own activities\" ON public.\"activities\" FOR INSERT WITH CHECK (auth.uid() = \"userId\");\nDROP POLICY IF EXISTS \"Users can update own activities\" ON public.\"activities\";\nCREATE POLICY \"Users can update own activities\" ON public.\"activities\" FOR UPDATE USING (auth.uid() = \"userId\") WITH CHECK (auth.uid() = \"userId\");\nDROP POLICY IF EXISTS \"Users can delete own activities\" ON public.\"activities\";\nCREATE POLICY \"Users can delete own activities\" ON public.\"activities\" FOR DELETE USING (auth.uid() = \"userId\");\n\nDROP POLICY IF EXISTS \"Users can insert own goals\" ON public.\"goals\";\nCREATE POLICY \"Users can insert own goals\" ON public.\"goals\" FOR INSERT WITH CHECK (auth.uid() = \"userId\");\nDROP POLICY IF EXISTS \"Users can update own goals\" ON public.\"goals\";\nCREATE POLICY \"Users can update own goals\" ON public.\"goals\" FOR UPDATE USING (auth.uid() = \"userId\") WITH CHECK (auth.uid() = \"userId\");\nDROP POLICY IF EXISTS \"Users can delete own goals\" ON public.\"goals\";\nCREATE POLICY \"Users can delete own goals\" ON public.\"goals\" FOR DELETE USING (auth.uid() = \"userId\");\n\nDROP POLICY IF EXISTS \"Users can insert own achievements\" ON public.\"achievements\";\nCREATE POLICY \"Users can insert own achievements\" ON public.\"achievements\" FOR INSERT WITH CHECK (auth.uid() = \"userId\");\nDROP POLICY IF EXISTS \"Users can update own achievements\" ON public.\"achievements\";\nCREATE POLICY \"Users can update own achievements\" ON public.\"achievements\" FOR UPDATE USING (auth.uid() = \"userId\") WITH CHECK (auth.uid() = \"userId\");\nDROP POLICY IF EXISTS \"Users can delete own achievements\" ON public.\"achievements\";\nCREATE POLICY \"Users can delete own achievements\" ON public.\"achievements\" FOR DELETE USING (auth.uid() = \"userId\");\n\nDROP POLICY IF EXISTS \"Users can insert own daily_stats\" ON public.\"daily_stats\";\nCREATE POLICY \"Users can insert own daily_stats\" ON public.\"daily_stats\" FOR INSERT WITH CHECK (auth.uid() = \"userId\");\nDROP POLICY IF EXISTS \"Users can update own daily_stats\" ON public.\"daily_stats\";\nCREATE POLICY \"Users can update own daily_stats\" ON public.\"daily_stats\" FOR UPDATE USING (auth.uid() = \"userId\") WITH CHECK (auth.uid() = \"userId\");\nDROP POLICY IF EXISTS \"Users can delete own daily_stats\" ON public.\"daily_stats\";\nCREATE POLICY \"Users can delete own daily_stats\" ON public.\"daily_stats\" FOR DELETE USING (auth.uid() = \"userId\");\n\n\n-- === Deterministic storage.objects policies (generated by SupabaseConfigAgent) ===\n-- Every declared bucket gets owner-scoped INSERT/UPDATE/DELETE policies using the\n-- first path segment as the owner uid. Public buckets additionally get public-read\n-- SELECT so getPublicUrl(...) resolves instead of returning \"Bucket not found\" 404.\n-- Idempotent: safe to re-run.\nDROP POLICY IF EXISTS \"avatars_public_read\" ON storage.objects;\nCREATE POLICY \"avatars_public_read\" ON storage.objects FOR SELECT TO public USING (bucket_id = 'avatars');\nDROP POLICY IF EXISTS \"avatars_owner_insert\" ON storage.objects;\nCREATE POLICY \"avatars_owner_insert\" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);\nDROP POLICY IF EXISTS \"avatars_owner_update\" ON storage.objects;\nCREATE POLICY \"avatars_owner_update\" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text) WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);\nDROP POLICY IF EXISTS \"avatars_owner_delete\" ON storage.objects;\nCREATE POLICY \"avatars_owner_delete\" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);\n",
+    "tables": [
+      {
+        "name": "users",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid"
+          },
+          {
+            "name": "email",
+            "type": "text"
+          },
+          {
+            "name": "name",
+            "type": "text"
+          },
+          {
+            "name": "avatar",
+            "type": "text"
+          },
+          {
+            "name": "age",
+            "type": "integer"
+          },
+          {
+            "name": "weight",
+            "type": "numeric"
+          },
+          {
+            "name": "height",
+            "type": "numeric"
+          },
+          {
+            "name": "fitnessGoal",
+            "type": "text"
+          },
+          {
+            "name": "totalCalories",
+            "type": "numeric"
+          },
+          {
+            "name": "totalDistance",
+            "type": "numeric"
+          },
+          {
+            "name": "totalWorkouts",
+            "type": "integer"
+          },
+          {
+            "name": "joinDate",
+            "type": "timestamptz"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz"
+          }
+        ]
+      },
+      {
+        "name": "activities",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid"
+          },
+          {
+            "name": "userId",
+            "type": "uuid"
+          },
+          {
+            "name": "type",
+            "type": "text"
+          },
+          {
+            "name": "startTime",
+            "type": "timestamptz"
+          },
+          {
+            "name": "endTime",
+            "type": "timestamptz"
+          },
+          {
+            "name": "duration",
+            "type": "numeric"
+          },
+          {
+            "name": "distance",
+            "type": "numeric"
+          },
+          {
+            "name": "calories",
+            "type": "numeric"
+          },
+          {
+            "name": "pace",
+            "type": "numeric"
+          },
+          {
+            "name": "intensity",
+            "type": "text"
+          },
+          {
+            "name": "notes",
+            "type": "text"
+          },
+          {
+            "name": "timestamp",
+            "type": "timestamptz"
+          },
+          {
+            "name": "status",
+            "type": "text"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz"
+          }
+        ]
+      },
+      {
+        "name": "goals",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid"
+          },
+          {
+            "name": "userId",
+            "type": "uuid"
+          },
+          {
+            "name": "type",
+            "type": "text"
+          },
+          {
+            "name": "target",
+            "type": "text"
+          },
+          {
+            "name": "targetValue",
+            "type": "numeric"
+          },
+          {
+            "name": "startDate",
+            "type": "timestamptz"
+          },
+          {
+            "name": "endDate",
+            "type": "timestamptz"
+          },
+          {
+            "name": "progress",
+            "type": "numeric"
+          },
+          {
+            "name": "status",
+            "type": "text"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz"
+          }
+        ]
+      },
+      {
+        "name": "achievements",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid"
+          },
+          {
+            "name": "userId",
+            "type": "uuid"
+          },
+          {
+            "name": "badge",
+            "type": "text"
+          },
+          {
+            "name": "title",
+            "type": "text"
+          },
+          {
+            "name": "description",
+            "type": "text"
+          },
+          {
+            "name": "icon",
+            "type": "text"
+          },
+          {
+            "name": "unlockedDate",
+            "type": "timestamptz"
+          },
+          {
+            "name": "isUnlocked",
+            "type": "boolean"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz"
+          }
+        ]
+      },
+      {
+        "name": "daily_stats",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid"
+          },
+          {
+            "name": "userId",
+            "type": "uuid"
+          },
+          {
+            "name": "date",
+            "type": "date"
+          },
+          {
+            "name": "totalCalories",
+            "type": "numeric"
+          },
+          {
+            "name": "totalDistance",
+            "type": "numeric"
+          },
+          {
+            "name": "totalDuration",
+            "type": "numeric"
+          },
+          {
+            "name": "activityCount",
+            "type": "integer"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz"
+          }
+        ]
+      }
+    ]
+  },
+  "auth": {
+    "external_email_enabled": true,
+    "mailer_autoconfirm": true
+  },
+  "storage": {
+    "buckets": [
+      {
+        "name": "avatars",
+        "public": true,
+        "file_size_limit": 5242880,
+        "options": {
+          "public": true,
+          "allowedMimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif"
+          ],
+          "fileSizeLimit": 5242880
+        }
+      }
+    ]
+  },
+  "supabase": {
+    "projectRef": "gbufmahyxmvfovsfajpq",
+    "projectUrl": "https://gbufmahyxmvfovsfajpq.supabase.co",
+    "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdidWZtYWh5eG12Zm92c2ZhanBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMzA1NDcsImV4cCI6MjEwMjcwNjU0N30.lOBMiZ8W__ZAT_xKJ5NBY84lF1Xed1sApiVTXIYszvA",
+    "status": "ready"
+  },
+  "consumers": {
+    "mobile": {
+      "projectId": null,
+      "projectName": null,
+      "projectPath": "/Users/khalilhaif/Desktop/dzairBuilder/generated-projects/project-31ca17ee",
+      "lastGeneratedAt": "2026-08-19T11:30:16.658Z",
+      "contractHash": "fec8afffc714b8d88da0faed6b13a564e654774c261e89825b499b0bcbf9cff4"
+    },
+    "adminPanel": {
+      "projectId": null,
+      "projectName": null,
+      "projectPath": null,
+      "lastGeneratedAt": null,
+      "contractHash": null
+    }
+  },
+  "admin": {
+    "resources": [
+      {
+        "table": "users",
+        "label": "Users",
+        "enabled": true,
+        "operations": [
+          "list",
+          "view",
+          "create",
+          "edit",
+          "delete"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "label": "Id",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "email",
+            "type": "text",
+            "label": "Email",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "name",
+            "type": "text",
+            "label": "Name",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "avatar",
+            "type": "text",
+            "label": "Avatar",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "age",
+            "type": "integer",
+            "label": "Age",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "weight",
+            "type": "numeric",
+            "label": "Weight",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "height",
+            "type": "numeric",
+            "label": "Height",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "fitnessGoal",
+            "type": "text",
+            "label": "FitnessGoal",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "totalCalories",
+            "type": "numeric",
+            "label": "TotalCalories",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "totalDistance",
+            "type": "numeric",
+            "label": "TotalDistance",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "totalWorkouts",
+            "type": "integer",
+            "label": "TotalWorkouts",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "joinDate",
+            "type": "timestamptz",
+            "label": "JoinDate",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz",
+            "label": "Created At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz",
+            "label": "Updated At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          }
+        ]
+      },
+      {
+        "table": "activities",
+        "label": "Activities",
+        "enabled": true,
+        "operations": [
+          "list",
+          "view",
+          "create",
+          "edit",
+          "delete"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "label": "Id",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "userId",
+            "type": "uuid",
+            "label": "UserId",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "type",
+            "type": "text",
+            "label": "Type",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "startTime",
+            "type": "timestamptz",
+            "label": "StartTime",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "endTime",
+            "type": "timestamptz",
+            "label": "EndTime",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "duration",
+            "type": "numeric",
+            "label": "Duration",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "distance",
+            "type": "numeric",
+            "label": "Distance",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "calories",
+            "type": "numeric",
+            "label": "Calories",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "pace",
+            "type": "numeric",
+            "label": "Pace",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "intensity",
+            "type": "text",
+            "label": "Intensity",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "notes",
+            "type": "text",
+            "label": "Notes",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "timestamp",
+            "type": "timestamptz",
+            "label": "Timestamp",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "label": "Status",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz",
+            "label": "Created At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz",
+            "label": "Updated At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          }
+        ]
+      },
+      {
+        "table": "goals",
+        "label": "Goals",
+        "enabled": true,
+        "operations": [
+          "list",
+          "view",
+          "create",
+          "edit",
+          "delete"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "label": "Id",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "userId",
+            "type": "uuid",
+            "label": "UserId",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "type",
+            "type": "text",
+            "label": "Type",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "target",
+            "type": "text",
+            "label": "Target",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "targetValue",
+            "type": "numeric",
+            "label": "TargetValue",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "startDate",
+            "type": "timestamptz",
+            "label": "StartDate",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "endDate",
+            "type": "timestamptz",
+            "label": "EndDate",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "progress",
+            "type": "numeric",
+            "label": "Progress",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "label": "Status",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz",
+            "label": "Created At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz",
+            "label": "Updated At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          }
+        ]
+      },
+      {
+        "table": "achievements",
+        "label": "Achievements",
+        "enabled": true,
+        "operations": [
+          "list",
+          "view",
+          "create",
+          "edit",
+          "delete"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "label": "Id",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "userId",
+            "type": "uuid",
+            "label": "UserId",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "badge",
+            "type": "text",
+            "label": "Badge",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "title",
+            "type": "text",
+            "label": "Title",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "description",
+            "type": "text",
+            "label": "Description",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "icon",
+            "type": "text",
+            "label": "Icon",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "unlockedDate",
+            "type": "timestamptz",
+            "label": "UnlockedDate",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "isUnlocked",
+            "type": "boolean",
+            "label": "IsUnlocked",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz",
+            "label": "Created At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz",
+            "label": "Updated At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          }
+        ]
+      },
+      {
+        "table": "daily_stats",
+        "label": "Daily Stats",
+        "enabled": true,
+        "operations": [
+          "list",
+          "view",
+          "create",
+          "edit",
+          "delete"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "label": "Id",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "userId",
+            "type": "uuid",
+            "label": "UserId",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "date",
+            "type": "date",
+            "label": "Date",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "totalCalories",
+            "type": "numeric",
+            "label": "TotalCalories",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "totalDistance",
+            "type": "numeric",
+            "label": "TotalDistance",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "totalDuration",
+            "type": "numeric",
+            "label": "TotalDuration",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "activityCount",
+            "type": "integer",
+            "label": "ActivityCount",
+            "visible": true,
+            "editable": true,
+            "required": false
+          },
+          {
+            "name": "created_at",
+            "type": "timestamptz",
+            "label": "Created At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamptz",
+            "label": "Updated At",
+            "visible": true,
+            "editable": false,
+            "required": false
+          }
+        ]
+      }
+    ],
+    "sync": {
+      "status": "unknown",
+      "pendingActions": [],
+      "lastCheckedAt": null
+    }
+  },
+  "sync": {
+    "status": "unknown",
+    "pendingActions": [],
+    "lastCheckedAt": null
+  },
+  "contractHash": "fec8afffc714b8d88da0faed6b13a564e654774c261e89825b499b0bcbf9cff4"
+}

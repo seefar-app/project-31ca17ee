@@ -5,7 +5,104 @@
     "sdkVersion": "~54.0.30",
     "navigation": "tabs",
     "styling": "NativeWind (Tailwind CSS)",
-    "stateManagement": "Zustand + React Query"
+    "stateManagement": "Zustand + React Query",
+    "backend": "Supabase",
+    "supabaseUrl": "https://gbufmahyxmvfovsfajpq.supabase.co",
+    "supabaseProjectRef": "gbufmahyxmvfovsfajpq",
+    "authPattern": "signUp via supabase.auth.signUp({ options: { data: { name, avatar, age, weight, height, fitnessGoal, totalCalories, totalDistance, totalWorkouts, joinDate } } }) — handle_new_user trigger populates users. NEVER call .from('users').insert()",
+    "tables": [
+      {
+        "name": "users",
+        "columns": [
+          "id:uuid",
+          "email:text",
+          "name:text",
+          "avatar:text",
+          "age:integer",
+          "weight:numeric",
+          "height:numeric",
+          "fitnessGoal:text",
+          "totalCalories:numeric",
+          "totalDistance:numeric",
+          "totalWorkouts:integer",
+          "joinDate:timestamptz",
+          "created_at:timestamptz",
+          "updated_at:timestamptz"
+        ]
+      },
+      {
+        "name": "activities",
+        "columns": [
+          "id:uuid",
+          "userId:uuid",
+          "type:text",
+          "startTime:timestamptz",
+          "endTime:timestamptz",
+          "duration:numeric",
+          "distance:numeric",
+          "calories:numeric",
+          "pace:numeric",
+          "intensity:text",
+          "notes:text",
+          "timestamp:timestamptz",
+          "status:text",
+          "created_at:timestamptz",
+          "updated_at:timestamptz"
+        ]
+      },
+      {
+        "name": "goals",
+        "columns": [
+          "id:uuid",
+          "userId:uuid",
+          "type:text",
+          "target:text",
+          "targetValue:numeric",
+          "startDate:timestamptz",
+          "endDate:timestamptz",
+          "progress:numeric",
+          "status:text",
+          "created_at:timestamptz",
+          "updated_at:timestamptz"
+        ]
+      },
+      {
+        "name": "achievements",
+        "columns": [
+          "id:uuid",
+          "userId:uuid",
+          "badge:text",
+          "title:text",
+          "description:text",
+          "icon:text",
+          "unlockedDate:timestamptz",
+          "isUnlocked:boolean",
+          "created_at:timestamptz",
+          "updated_at:timestamptz"
+        ]
+      },
+      {
+        "name": "daily_stats",
+        "columns": [
+          "id:uuid",
+          "userId:uuid",
+          "date:date",
+          "totalCalories:numeric",
+          "totalDistance:numeric",
+          "totalDuration:numeric",
+          "activityCount:integer",
+          "created_at:timestamptz",
+          "updated_at:timestamptz"
+        ]
+      }
+    ],
+    "storageBuckets": [
+      {
+        "name": "avatars",
+        "public": true
+      }
+    ],
+    "storagePattern": "<bucket>/<userId>/<filename>. Always list+remove old file before upload to avoid accumulation."
   },
   "files": {
     "package.json": "json",
@@ -18,8 +115,8 @@
     "types/index.ts": "ts",
     "constants/Colors.ts": "ts",
     "hooks/useColorScheme.ts": "ts",
-    "store/useAuthStore.ts": "ts",
-    "store/useStore.ts": "ts",
+    "store/useAuthStore.ts": "rewritten to use Supabase (real queries replacing mock data)",
+    "store/useStore.ts": "rewritten to use Supabase (real queries replacing mock data)",
     "components/ui/ThemedView.tsx": "tsx",
     "components/ui/ThemedText.tsx": "tsx",
     "components/ui/Button.tsx": "tsx",
@@ -71,11 +168,19 @@
     {
       "summary": "improve the ui spacing because all the card is closed to each other... → 4 files written, 6 reasoning rounds",
       "timestamp": "2026-08-18T23:06:17.800Z"
+    },
+    {
+      "summary": "Supabase integration completed: 5 tables, 1 buckets, 2 files rewritten. Project ref: vsrohuodenwkopjsgmsz",
+      "timestamp": "2026-08-19T11:19:32.137Z"
+    },
+    {
+      "summary": "Supabase integration completed: 5 tables, 1 buckets, 0 files rewritten. Project ref: gbufmahyxmvfovsfajpq",
+      "timestamp": "2026-08-19T11:31:01.283Z"
     }
   ],
   "metadata": {
     "createdAt": "2026-08-18T22:58:56.970Z",
-    "lastUpdated": "2026-08-18T23:06:17.801Z",
+    "lastUpdated": "2026-08-19T11:31:01.284Z",
     "projectName": "project-31ca17ee",
     "platform": "react-native",
     "originalPrompt": "create an fitness app to track user activite and exercise  ",

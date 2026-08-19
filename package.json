@@ -54,7 +54,10 @@
     "zod": "^3.23.0",
     "react-hook-form": "^7.53.0",
     "@hookform/resolvers": "^3.9.0",
-    "nativewind": "^4.1.23"
+    "nativewind": "^4.1.23",
+    "@supabase/supabase-js": "^2.77.0",
+    "react-native-url-polyfill": "^2.0.0",
+    "@react-native-async-storage/async-storage": "2.1.2"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
