@@ -93,27 +93,24 @@ export default function PoseTrackerScreen() {
         setLoadingMessage('Loading TensorFlow.js...');
         setLoadingProgress(10);
 
-        // Dynamic import to avoid issues
-        const tf = await import('@tensorflow/tfjs');
-        const tfReactNative = await import('@tensorflow/tfjs-react-native');
+        // Import TensorFlow modules
+        const [tf, tfReactNative, poseDetection] = await Promise.all([
+          import('@tensorflow/tfjs'),
+          import('@tensorflow/tfjs-react-native'),
+          import('@tensorflow-models/pose-detection')
+        ]);
 
         setLoadingProgress(30);
         setLoadingMessage('Initializing TensorFlow backend...');
 
-        // Wait for TF to be ready
-        await tfReactNative.bundleResourceIO;
-        await tf.ready();
+        // Initialize TensorFlow backend
+        await tfReactNative.ready();
 
         if (!isMounted) return;
 
         setTfReady(true);
         setLoadingProgress(50);
         setLoadingMessage('Loading pose detection model...');
-
-        // Load pose detection model
-        const poseDetection = await import('@tensorflow-models/pose-detection');
-
-        setLoadingProgress(70);
 
         // Create MoveNet detector (SinglePose Lightning - fastest)
         const detector = await poseDetection.createDetector(
@@ -349,36 +346,21 @@ export default function PoseTrackerScreen() {
           leftHip &&
           leftKnee &&
           leftAnkle &&
-          rightKnee &&
           leftHip.score > minScore &&
-          leftKnee.score > minScore
+          leftKnee.score > minScore &&
+          leftAnkle.score > minScore
         ) {
-          const frontKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
+          const kneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
 
-          // Check if front knee is at 90 degrees
-          if (frontKneeAngle < 100 && frontKneeAngle > 70) {
-            setFormFeedback({
-              isGoodForm: true,
-              message: 'Perfect lunge!',
-              severity: 'good',
-            });
-          } else if (frontKneeAngle < 70) {
-            setFormFeedback({
-              isGoodForm: false,
-              message: 'Don\'t go too deep',
-              severity: 'warning',
-            });
-          } else {
-            setFormFeedback({
-              isGoodForm: true,
-              message: 'Go deeper',
-              severity: 'warning',
-            });
-          }
+          setFormFeedback({
+            isGoodForm: kneeAngle < 120,
+            message: kneeAngle < 90 ? 'Great depth!' : 'Go lower',
+            severity: kneeAngle < 120 ? 'good' : 'warning',
+          });
 
           setExerciseState((prev) => {
-            const isDown = frontKneeAngle < 110;
-            const isUp = frontKneeAngle > 150;
+            const isDown = kneeAngle < 100;
+            const isUp = kneeAngle > 150;
 
             if (prev.phase === 'up' && isDown) {
               return { ...prev, phase: 'down', isInPosition: true };
@@ -393,7 +375,7 @@ export default function PoseTrackerScreen() {
             } else if (prev.phase === 'neutral') {
               return { ...prev, phase: isUp ? 'up' : 'down' };
             }
-            return { ...prev, lastAngle: frontKneeAngle, isInPosition: isDown };
+            return { ...prev, lastAngle: kneeAngle, isInPosition: isDown };
           });
         }
       }
@@ -401,153 +383,96 @@ export default function PoseTrackerScreen() {
     [exerciseType, calculateAngle]
   );
 
-  // Simulated pose detection for demo (since real TF.js camera integration is complex in Expo Go)
-  // In production, you would use cameraWithTensors from @tensorflow/tfjs-react-native
-  useEffect(() => {
-    if (!isTracking || isModelLoading || modelError) return;
-
-    // Simulated keypoints for demonstration
-    // In a real implementation, these would come from the detector
-    const simulatePoseDetection = () => {
-      const now = Date.now();
-      if (now - lastDetectionTime.current < 200) {
-        rafRef.current = requestAnimationFrame(simulatePoseDetection);
-        return;
-      }
-      lastDetectionTime.current = now;
-
-      // Generate realistic-looking keypoints for demo
-      const baseX = SCREEN_WIDTH / 2;
-      const baseY = SCREEN_HEIGHT / 2;
-      const time = now / 1000;
-
-      // Simulate movement based on exercise type
-      const movement = Math.sin(time * 2) * 30;
-
-      const simulatedKeypoints: PoseKeypoint[] = KEYPOINT_NAMES.map((name, index) => {
-        let x = baseX;
-        let y = baseY;
-        const score = 0.8 + Math.random() * 0.2;
-
-        // Position keypoints roughly in human shape
-        switch (name) {
-          case 'nose':
-            y = baseY - 150;
-            break;
-          case 'left_eye':
-            x = baseX - 15;
-            y = baseY - 160;
-            break;
-          case 'right_eye':
-            x = baseX + 15;
-            y = baseY - 160;
-            break;
-          case 'left_ear':
-            x = baseX - 30;
-            y = baseY - 150;
-            break;
-          case 'right_ear':
-            x = baseX + 30;
-            y = baseY - 150;
-            break;
-          case 'left_shoulder':
-            x = baseX - 60;
-            y = baseY - 100;
-            break;
-          case 'right_shoulder':
-            x = baseX + 60;
-            y = baseY - 100;
-            break;
-          case 'left_elbow':
-            x = baseX - 80;
-            y = baseY - 30 + (exerciseType === 'pushup' ? movement : 0);
-            break;
-          case 'right_elbow':
-            x = baseX + 80;
-            y = baseY - 30 + (exerciseType === 'pushup' ? movement : 0);
-            break;
-          case 'left_wrist':
-            x = baseX - 90 + (exerciseType === 'jumping_jack' ? movement : 0);
-            y = baseY + 20 + (exerciseType === 'jumping_jack' ? -movement * 2 : 0);
-            break;
-          case 'right_wrist':
-            x = baseX + 90 + (exerciseType === 'jumping_jack' ? -movement : 0);
-            y = baseY + 20 + (exerciseType === 'jumping_jack' ? -movement * 2 : 0);
-            break;
-          case 'left_hip':
-            x = baseX - 40;
-            y = baseY + 30;
-            break;
-          case 'right_hip':
-            x = baseX + 40;
-            y = baseY + 30;
-            break;
-          case 'left_knee':
-            x = baseX - 45;
-            y = baseY + 100 + (exerciseType === 'squat' ? movement : 0);
-            break;
-          case 'right_knee':
-            x = baseX + 45;
-            y = baseY + 100 + (exerciseType === 'squat' ? movement : 0);
-            break;
-          case 'left_ankle':
-            x = baseX - 50 + (exerciseType === 'jumping_jack' ? -movement : 0);
-            y = baseY + 180;
-            break;
-          case 'right_ankle':
-            x = baseX + 50 + (exerciseType === 'jumping_jack' ? movement : 0);
-            y = baseY + 180;
-            break;
-        }
-
-        return { name, x, y, score };
-      });
-
-      setKeypoints(simulatedKeypoints);
-      analyzePose(simulatedKeypoints);
-
-      rafRef.current = requestAnimationFrame(simulatePoseDetection);
-    };
-
-    rafRef.current = requestAnimationFrame(simulatePoseDetection);
-
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, [isTracking, isModelLoading, modelError, exerciseType, analyzePose]);
-
-  const toggleCamera = () => {
-    setFacing((current) => (current === 'back' ? 'front' : 'back'));
-  };
-
-  const resetReps = () => {
+  // Start tracking
+  const handleStartTracking = useCallback(() => {
+    if (!detectorRef.current) {
+      alert('Model not loaded yet');
+      return;
+    }
+    setIsTracking(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, []);
+
+  // Stop tracking
+  const handleStopTracking = useCallback(() => {
+    setIsTracking(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Show summary and navigate back
+    setTimeout(() => {
+      router.back();
+    }, 500);
+  }, [router]);
+
+  // Toggle camera
+  const toggleCameraFacing = useCallback(() => {
+    setFacing((current) => (current === 'back' ? 'front' : 'back'));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  // Reset counter
+  const handleReset = useCallback(() => {
     setExerciseState({
       repCount: 0,
       isInPosition: false,
       lastAngle: 0,
       phase: 'neutral',
     });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  }, []);
+
+  // Render skeleton overlay
+  const renderSkeleton = () => {
+    if (keypoints.length === 0) return null;
+
+    return (
+      <Svg
+        style={StyleSheet.absoluteFill}
+        width={SCREEN_WIDTH}
+        height={SCREEN_HEIGHT}
+      >
+        {/* Draw connections */}
+        {SKELETON_CONNECTIONS.map(([i, j], index) => {
+          const p1 = keypoints[i];
+          const p2 = keypoints[j];
+          if (p1 && p2 && p1.score > 0.3 && p2.score > 0.3) {
+            return (
+              <Line
+                key={`line-${index}`}
+                x1={p1.x}
+                y1={p1.y}
+                x2={p2.x}
+                y2={p2.y}
+                stroke={formFeedback.isGoodForm ? '#10b981' : '#f59e0b'}
+                strokeWidth="3"
+              />
+            );
+          }
+          return null;
+        })}
+
+        {/* Draw keypoints */}
+        {keypoints.map((point, index) => {
+          if (point.score > 0.3) {
+            return (
+              <Circle
+                key={`point-${index}`}
+                cx={point.x}
+                cy={point.y}
+                r="6"
+                fill={formFeedback.isGoodForm ? '#10b981' : '#f59e0b'}
+                stroke="#fff"
+                strokeWidth="2"
+              />
+            );
+          }
+          return null;
+        })}
+      </Svg>
+    );
   };
 
-  const getExerciseTitle = () => {
-    switch (exerciseType) {
-      case 'squat':
-        return 'Squats';
-      case 'pushup':
-        return 'Push-ups';
-      case 'jumping_jack':
-        return 'Jumping Jacks';
-      case 'lunge':
-        return 'Lunges';
-      default:
-        return 'Exercise';
-    }
-  };
-
-  // Permission denied state
+  // Handle camera permission
   if (!permission) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -558,108 +483,99 @@ export default function PoseTrackerScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Camera Access</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
         <View style={styles.permissionContainer}>
-          <View style={[styles.iconCircle, { backgroundColor: `${colors.primary}20` }]}>
+          <View style={[styles.iconCircle, { backgroundColor: colors.primary + '20' }]}>
             <Ionicons name="camera" size={48} color={colors.primary} />
           </View>
           <Text style={[styles.permissionTitle, { color: colors.text }]}>
-            Camera Access Required
+            Camera Permission Required
           </Text>
           <Text style={[styles.permissionText, { color: colors.textSecondary }]}>
-            We need camera access to track your poses and count reps during workouts.
-            Your video is processed on-device and never uploaded.
+            We need access to your camera to track your exercise form and count reps in real-time.
           </Text>
           <Button
-            title="Grant Camera Access"
+            title="Grant Permission"
             onPress={requestPermission}
             variant="primary"
-            size="lg"
-            icon="camera"
-            fullWidth
             style={{ marginTop: 24 }}
-          />
-          <Button
-            title="Go Back"
-            onPress={() => router.back()}
-            variant="ghost"
-            size="md"
-            style={{ marginTop: 12 }}
           />
         </View>
       </View>
     );
   }
 
-  // Model loading state
+  // Show loading screen while model loads
   if (isModelLoading) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <View style={[styles.iconCircle, { backgroundColor: `${colors.primary}20` }]}>
-            <Ionicons name="body" size={48} color={colors.primary} />
-          </View>
-          <Text style={[styles.loadingTitle, { color: colors.text }]}>
-            Loading AI Model
-          </Text>
-          <Text style={[styles.loadingMessage, { color: colors.textSecondary }]}>
-            {loadingMessage}
-          </Text>
-          <View style={styles.progressContainer}>
-            <View style={[styles.progressBar, { backgroundColor: colors.backgroundSecondary }]}>
-              <LinearGradient
-                colors={colors.gradient as unknown as string[]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.progressFill, { width: `${loadingProgress}%` }]}
-              />
-            </View>
-            <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-              {loadingProgress}%
-            </Text>
-          </View>
-          <Text style={[styles.loadingHint, { color: colors.textSecondary }]}>
-            This may take a few seconds on first load
-          </Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Loading AI Model</Text>
+          <View style={{ width: 40 }} />
         </View>
-      </View>
-    );
-  }
 
-  // Model error state
-  if (modelError) {
-    return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <View style={styles.permissionContainer}>
-          <View style={[styles.iconCircle, { backgroundColor: `${colors.error}20` }]}>
-            <Ionicons name="alert-circle" size={48} color={colors.error} />
-          </View>
-          <Text style={[styles.permissionTitle, { color: colors.text }]}>
-            Model Loading Failed
-          </Text>
-          <Text style={[styles.permissionText, { color: colors.textSecondary }]}>
-            {modelError}
-          </Text>
-          <Button
-            title="Try Again"
-            onPress={() => {
-              setModelError(null);
-              setIsModelLoading(true);
-              setLoadingProgress(0);
-            }}
-            variant="primary"
-            size="lg"
-            icon="refresh"
-            fullWidth
-            style={{ marginTop: 24 }}
-          />
-          <Button
-            title="Go Back"
-            onPress={() => router.back()}
-            variant="ghost"
-            size="md"
-            style={{ marginTop: 12 }}
-          />
+        <View style={styles.loadingContainer}>
+          {modelError ? (
+            <>
+              <Ionicons name="alert-circle" size={64} color={colors.error} />
+              <Text style={[styles.loadingTitle, { color: colors.error, marginTop: 16 }]}>
+                Error Loading Model
+              </Text>
+              <Text style={[styles.permissionText, { color: colors.textSecondary, marginTop: 8 }]}>
+                {modelError}
+              </Text>
+              <Button
+                title="Try Again"
+                onPress={() => {
+                  setModelError(null);
+                  setIsModelLoading(true);
+                  setLoadingProgress(0);
+                }}
+                variant="primary"
+                style={{ marginTop: 24 }}
+              />
+              <Button
+                title="Go Back"
+                onPress={() => router.back()}
+                variant="outline"
+                style={{ marginTop: 12 }}
+              />
+            </>
+          ) : (
+            <>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingTitle, { color: colors.text, marginTop: 24 }]}>
+                {loadingMessage}
+              </Text>
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                  <LinearGradient
+                    colors={['#ec4899', '#f43f5e', '#fb7185']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.progressFill, { width: `${loadingProgress}%` }]}
+                  />
+                </View>
+                <Text style={[styles.progressText, { color: colors.primary }]}>
+                  {loadingProgress}%
+                </Text>
+              </View>
+              <Text style={[styles.loadingHint, { color: colors.textSecondary }]}>
+                This may take a moment on first launch...
+              </Text>
+            </>
+          )}
         </View>
       </View>
     );
@@ -667,150 +583,100 @@ export default function PoseTrackerScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing={facing}>
-        {/* Skeleton overlay */}
-        {isTracking && keypoints.length > 0 && (
-          <Svg style={StyleSheet.absoluteFill}>
-            {/* Draw skeleton lines */}
-            {SKELETON_CONNECTIONS.map(([startIdx, endIdx], index) => {
-              const start = keypoints[startIdx];
-              const end = keypoints[endIdx];
-              if (start && end && start.score > 0.3 && end.score > 0.3) {
-                return (
-                  <Line
-                    key={`line-${index}`}
-                    x1={start.x}
-                    y1={start.y}
-                    x2={end.x}
-                    y2={end.y}
-                    stroke={formFeedback.isGoodForm ? '#22c55e' : '#f59e0b'}
-                    strokeWidth={3}
-                    strokeLinecap="round"
-                  />
-                );
-              }
-              return null;
-            })}
-            {/* Draw keypoints */}
-            {keypoints.map((point, index) => {
-              if (point.score > 0.3) {
-                return (
-                  <Circle
-                    key={`point-${index}`}
-                    cx={point.x}
-                    cy={point.y}
-                    r={6}
-                    fill={formFeedback.isGoodForm ? '#22c55e' : '#f59e0b'}
-                    stroke="#fff"
-                    strokeWidth={2}
-                  />
-                );
-              }
-              return null;
-            })}
-          </Svg>
-        )}
+      <CameraView
+        style={StyleSheet.absoluteFill}
+        facing={facing}
+      >
+        {renderSkeleton()}
 
         {/* Header */}
         <LinearGradient
           colors={['rgba(0,0,0,0.6)', 'transparent']}
-          style={[styles.header, { paddingTop: insets.top + 8 }]}
+          style={[styles.header, { paddingTop: insets.top + 16 }]}
         >
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <Ionicons name="close" size={24} color="#fff" />
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{getExerciseTitle()}</Text>
-          <TouchableOpacity onPress={toggleCamera} style={styles.headerButton}>
+          <Text style={styles.headerTitle}>
+            {exerciseType.charAt(0).toUpperCase() + exerciseType.slice(1).replace('_', ' ')}
+          </Text>
+          <TouchableOpacity onPress={toggleCameraFacing} style={styles.backButton}>
             <Ionicons name="camera-reverse" size={24} color="#fff" />
           </TouchableOpacity>
         </LinearGradient>
 
-        {/* Rep counter */}
-        <View style={styles.repContainer}>
-          <Card variant="elevated" style={styles.repCard}>
-            <Text style={[styles.repCount, { color: colors.primary }]}>
-              {exerciseState.repCount}
-            </Text>
-            <Text style={[styles.repLabel, { color: colors.textSecondary }]}>REPS</Text>
-          </Card>
-        </View>
-
-        {/* Form feedback */}
-        {isTracking && (
-          <View style={styles.feedbackContainer}>
-            <View
-              style={[
-                styles.feedbackBadge,
-                {
-                  backgroundColor:
-                    formFeedback.severity === 'good'
-                      ? 'rgba(34, 197, 94, 0.9)'
-                      : formFeedback.severity === 'warning'
-                      ? 'rgba(245, 158, 11, 0.9)'
-                      : 'rgba(239, 68, 68, 0.9)',
-                },
-              ]}
-            >
-              <Ionicons
-                name={
-                  formFeedback.severity === 'good'
-                    ? 'checkmark-circle'
-                    : formFeedback.severity === 'warning'
-                    ? 'alert-circle'
-                    : 'close-circle'
-                }
-                size={20}
-                color="#fff"
-              />
-              <Text style={styles.feedbackText}>{formFeedback.message}</Text>
-            </View>
+        {/* Stats overlay */}
+        <View style={styles.statsOverlay}>
+          <View style={styles.repCounter}>
+            <Text style={styles.repCountText}>{exerciseState.repCount}</Text>
+            <Text style={styles.repLabel}>REPS</Text>
           </View>
-        )}
+
+          <View
+            style={[
+              styles.feedbackBadge,
+              {
+                backgroundColor:
+                  formFeedback.severity === 'good'
+                    ? 'rgba(16, 185, 129, 0.9)'
+                    : formFeedback.severity === 'warning'
+                    ? 'rgba(245, 158, 11, 0.9)'
+                    : 'rgba(239, 68, 68, 0.9)',
+              },
+            ]}
+          >
+            <Ionicons
+              name={
+                formFeedback.severity === 'good'
+                  ? 'checkmark-circle'
+                  : formFeedback.severity === 'warning'
+                  ? 'warning'
+                  : 'close-circle'
+              }
+              size={20}
+              color="#fff"
+            />
+            <Text style={styles.feedbackText}>{formFeedback.message}</Text>
+          </View>
+        </View>
 
         {/* Bottom controls */}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.8)']}
-          style={[styles.bottomControls, { paddingBottom: insets.bottom + 16 }]}
+          style={[styles.bottomControls, { paddingBottom: insets.bottom + 24 }]}
         >
           {!isTracking ? (
             <View style={styles.startContainer}>
               <Text style={styles.instructionText}>
-                Position yourself so your full body is visible in the camera
+                Position yourself in frame and tap Start when ready
               </Text>
               <Button
                 title="Start Tracking"
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                  setIsTracking(true);
-                }}
+                onPress={handleStartTracking}
                 variant="primary"
-                size="lg"
                 icon="play"
-                fullWidth
               />
             </View>
           ) : (
             <View style={styles.controlsRow}>
-              <TouchableOpacity onPress={resetReps} style={styles.controlButton}>
-                <Ionicons name="refresh" size={28} color="#fff" />
+              <TouchableOpacity onPress={handleReset} style={styles.controlButton}>
+                <Ionicons name="refresh" size={32} color="#fff" />
                 <Text style={styles.controlLabel}>Reset</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                  setIsTracking(false);
-                }}
-                style={[styles.stopButton, { backgroundColor: colors.error }]}
-              >
-                <Ionicons name="stop" size={32} color="#fff" />
+
+              <TouchableOpacity onPress={handleStopTracking}>
+                <LinearGradient
+                  colors={['#ef4444', '#dc2626']}
+                  style={styles.stopButton}
+                >
+                  <Ionicons name="stop" size={32} color="#fff" />
+                </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={styles.controlButton}
-              >
-                <Ionicons name="checkmark" size={28} color="#fff" />
-                <Text style={styles.controlLabel}>Done</Text>
-              </TouchableOpacity>
+
+              <View style={styles.controlButton}>
+                <Ionicons name="fitness" size={32} color="#fff" />
+                <Text style={styles.controlLabel}>Tracking</Text>
+              </View>
             </View>
           )}
         </LinearGradient>
@@ -823,69 +689,59 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  camera: {
-    flex: 1,
-  },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#fff',
   },
-  repContainer: {
+  statsOverlay: {
     position: 'absolute',
     top: 120,
-    right: 16,
-  },
-  repCard: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    minWidth: 100,
+    gap: 16,
   },
-  repCount: {
+  repCounter: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  repCountText: {
     fontSize: 48,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: '#fff',
   },
   repLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
     letterSpacing: 2,
-  },
-  feedbackContainer: {
-    position: 'absolute',
-    top: 120,
-    left: 16,
   },
   feedbackBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
     gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
   },
   feedbackText: {
     color: '#fff',
