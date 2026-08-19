@@ -86,6 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user, isAuthenticated: true, isLoading: false, authError: null });
       return true;
     } catch (error) {
+      console.error('Login error:', error);
       set({ authError: 'Login failed. Please try again.', isLoading: false });
       return false;
     }
@@ -137,6 +138,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return false;
       }
 
+      // Wait a bit for the trigger to create the user profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
@@ -144,6 +148,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .single();
 
       if (profileError || !profile) {
+        console.error('Profile fetch error:', profileError);
         set({ authError: 'Failed to load user profile.', isLoading: false });
         return false;
       }
@@ -152,6 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user, isAuthenticated: true, isLoading: false, authError: null });
       return true;
     } catch (error) {
+      console.error('Signup error:', error);
       set({ authError: 'Signup failed. Please try again.', isLoading: false });
       return false;
     }
@@ -162,17 +168,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await supabase.auth.signOut();
       set({ user: null, isAuthenticated: false, authError: null });
     } catch (error) {
+      console.error('Logout error:', error);
       set({ authError: 'Logout failed. Please try again.' });
     }
   },
 
   initializeAuth: async () => {
-    set({ isLoading: true });
-    
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError || !sessionData.session) {
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        set({ isLoading: false, isAuthenticated: false, user: null });
+        return;
+      }
+
+      if (!sessionData.session) {
         set({ isLoading: false, isAuthenticated: false, user: null });
         return;
       }
@@ -184,7 +195,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .eq('id', userId)
         .single();
 
-      if (profileError || !profile) {
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        set({ isLoading: false, isAuthenticated: false, user: null });
+        return;
+      }
+
+      if (!profile) {
         set({ isLoading: false, isAuthenticated: false, user: null });
         return;
       }
@@ -193,7 +210,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user, isAuthenticated: true, isLoading: false });
 
       // Set up auth state change listener
-      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_OUT' || !session) {
           set({ user: null, isAuthenticated: false });
         } else if (event === 'SIGNED_IN' && session.user) {
@@ -209,11 +226,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
         }
       });
-
-      return () => {
-        authListener?.subscription.unsubscribe();
-      };
     } catch (error) {
+      console.error('Initialize auth error:', error);
       set({ isLoading: false, isAuthenticated: false, user: null });
     }
   },

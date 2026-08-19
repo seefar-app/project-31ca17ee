@@ -31,8 +31,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const isOnboarding = segments.length === 0 || segments[0] === 'index';
 
     if (!isAuthenticated && !inAuthGroup && !isOnboarding) {
+      // Not authenticated and not in auth screens, redirect to login
       router.replace('/(auth)/login');
     } else if (isAuthenticated && (inAuthGroup || isOnboarding)) {
+      // Authenticated but still in auth or onboarding, redirect to tabs
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, isLoading, segments]);
@@ -83,6 +85,13 @@ export default function RootLayout() {
               name="workout/[id]"
               options={{
                 animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              name="pose-tracker"
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
               }}
             />
           </Stack>
